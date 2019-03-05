@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>封装移动端的轮播图插件</title>
+    <style>
+        body,ul{
+            margin: 0;
+        }
+        ul{
+            padding-left: 0;
+        }
+        li{
+            list-style: none;
+        }
+        img{
+            display: block;
+        }
+        .content{
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+            /*background-color: red;*/
+        }
+        .swiper {
+            width: 100vw;
+            height: 60vh;
+            /*background-color: yellow;*/
+            overflow: hidden;   /*设置外面内容隐藏*/
+        }
+        .swiper ul {
+            width: 500vw; /*li的宽度*li的个数*/
+            height: 60vh;
+            transform: translateZ(0);
+        }
+        .swiper ul li{
+            display: flex;  /*水平与垂直方向的居中*/
+            justify-content: center;
+            align-items: center;
+            float: left;
+            width: 100vw;
+            height: 60vh;
+            /*background-color: aquamarine;*/
+        }
+        .swiper ul li img{
+            width: 70%;
+            height: 80%;
+            border-radius: 2vw;
+        }
+        .swiper .bg{
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            filter: blur(20px);
+            
+        }
+        .swiper .bg  img{
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+<div class="content">
+    <div class="swiper">
+        <div class="bg" id="bg"><img src="images/1.jpg" alt="background"></div>
+        <ul>
+            <li><img src="images/1.jpg" alt=""></li>
+            <li><img src="images/2.jpg" alt=""></li>
+            <li><img src="images/3.jpg" alt=""></li>
+            <li><img src="images/4.jpg" alt=""></li>
+        </ul>
+    </div>
+</div>
+<script>
+    /*
+    程序思路：
+        1:让ul元素的宽度根据li的个数的变化而变化（功能模块）
+            1.1:获取ul元素（逻辑模块）
+            1.2:获取li元素
+            1.3:计算ul的宽度并给li元素设置上去
+        2:触摸并移动ul元素
+            ul元素移动的距离值
+            ul的新位置=ul元素的初始位置+ul元素移动的距离
+            2.1:获取手指触摸到ul元素上使得位置
+            2.2:获取手指触摸到ul元素上时的uul当前偏移量
+                left
+                margin
+                translate
+            2.3:获取手指滑动的位置
+            2.4:计算ul新的偏移量
+            2.5::给ul元素设置一个新的偏移量
+
+            触摸->点击
+            滑动->移动
+            抬起->鼠标抬起
+     */
+    var data={
+        oUl:document.querySelector("ul"),
+        aLi:document.querySelectorAll("li"),
+        oSwiper:document.querySelector(".swiper"),
+        time:"0.3s"
+    }
+
+    swiper(data);
+
+    function swiper(data){
+        data.oUl.style.width = data.aLi.length + "00vw";
+
+        data.oSwiper.addEventListener("touchstart",touch);
+        data.oSwiper.addEventListener("touchmove",touch);
+        data.oSwiper.addEventListener("touchend",touch);
+
+        /*
+        事件分流，高内举
+         */
+        var x1,startX ;
+        data.oUl.ps={};
+        /*
+        视频1：10：00左右的笔记
+         */
+        function touch(ev) {
+            ev = ev||window.event;  //对象，.type属性表明了三种操作的区别
+            switch (ev.type) {
+                case "touchstart":
+                    x1 = ev.changedTouches[0].clientX;
+                    // startX=oUl["translateX"]||0;//第一次触摸时没有自定义的translateX的值，为0
+                    data.oUl.style.transition = "";
+                    startX=cssTransform(data.oUl,"translateX");
+                    break;
+                case "touchmove":
+                    var x2=ev.changedTouches[0].clientX;
+                    var nowX=startX+x2-x1;//计算ul的新的偏移量
+                    // oUl["translateX"] = nowX;
+                    // oUl.style.transform = "translateX(" + nowX + "px)";
+                    cssTransform(data.oUl, "translateX", nowX);
+                    var offset = cssTransform(data.oUl, "translateX");
+                    offset = Math.min(offset,0);
+                    offset = Math.max(-data.aLi[0].offsetWidth*(data.aLi.length-1),offset);
+                    var num = Math.round(offset/data.aLi[0].offsetWidth);
+                    data.oSwiper.children[0].children[0].setAttribute("src", "images/"+(-num+1)+".jpg");
+                    break;
+                case "touchend":
+                    var offset = cssTransform(data.oUl, "translateX");
+                    offset = Math.min(offset,0);
+                    offset = Math.max(-data.aLi[0].offsetWidth*(data.aLi.length-1),offset);
+                    var num=Math.round(offset/data.aLi[0].offsetWidth);
+                    data.oUl.style.transition = data.time||"0.5s";
+                    cssTransform(data.oUl, "translateX", num*data.aLi[0].offsetWidth);
+
+                    break;
+            }
+        }
+
+        //两个参数获取指定元素的指定属性的值
+        //三个参数设置指定元素的指定属性的值
+        function cssTransform(obj, attr, val) {
+            if(!obj.ps){
+                obj.ps={};
+            }
+            switch (arguments.length) {
+                case 2:
+                    return obj.ps[attr]||0;
+                    break;
+                case 3:
+                    obj.ps[attr]=val;
+                    var str = "";
+                    for(var key in obj.ps){
+                        switch (key) {
+                            case "translate":
+                            case "translateX":
+                            case "translateY":
+                            case "translateZ":
+                                str+=key+"("+obj.ps[key]+"px)";
+                                break;
+                        }
+                    }
+                    obj.style.transform = str;
+                    break;
+            }
+        }
+    }
+
+</script>
+</body>
+</html>
+
+<!--
+     html;pug emmet
+
+     css:less sass
+
+     backbone:1k~2K
+
+     mvvm:
+     mvc:
+
+-->
